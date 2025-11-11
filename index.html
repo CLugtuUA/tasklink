@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskLink App</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'task-primary': '#4f46e5', // Indigo
+                        'task-secondary': '#10b981', // Emerald
+                        'task-background': '#f9fafb',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
+        /* 1. Core Structure and Navigation: Fixed Mobile Wrapper */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #e5e7eb; /* Light gray background */
+        }
+        #app-container {
+            width: 100%;
+            max-width: 400px; /* Key Feature: Max mobile size */
+            height: 750px; /* Key Feature: Fixed height for simulation */
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            border-radius: 24px;
+            background-color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* App Content Area */
+        #app-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-top: 56px; /* Space for Header */
+            padding-bottom: 72px; /* Space for Bottom Nav */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none;  /* IE and Edge */
+        }
+        #app-content::-webkit-scrollbar { /* Chrome, Safari, Opera */
+            display: none;
+        }
+
+        /* Page Transitions */
+        .page {
+            display: none;
+            min-height: 100%;
+            background-color: #fff;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Header and Nav Positioning */
+        #app-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
+        }
+        #bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
+        }
+
+        /* Chat Specific Styling */
+        #in_app_chat .chat-messages {
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+        }
+        .message-bubble {
+            max-width: 80%;
+            padding: 0.5rem 0.75rem;
+            border-radius: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+        .user-message {
+            align-self: flex-end;
+            background-color: #4f46e5; /* Task-Primary */
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+        }
+        .other-message {
+            align-self: flex-start;
+            background-color: #e5e7eb; /* Gray-200 */
+            color: #374151; /* Gray-700 */
+            border-bottom-left-radius: 0.25rem;
+        }
+    </style>
+</head>
+<body class="font-sans">
+
+    <div id="app-container">
+
+        <!-- App Header (Sticky Top Bar) -->
+        <header id="app-header" class="bg-white border-b border-gray-100 shadow-sm p-3 flex items-center justify-between transition-all duration-300">
+            <button id="back-button" class="text-gray-500 hover:text-task-primary hidden" onclick="goBack()">
+                <!-- Icon: Arrow Left -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h1 id="page-title" class="text-lg font-bold text-gray-800 ml-3 flex-grow text-left">Home</h1>
+            <div class="flex space-x-4">
+                <button class="text-gray-500 hover:text-task-primary relative" onclick="MapsTo('in_app_chat')">
+                    <!-- Icon: Messages (💬) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+                </button>
+                <button class="text-gray-500 hover:text-task-primary relative">
+                    <!-- Icon: Notifications (🔔) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 1 4 0v1.5c0 1.2.7 2.3 1.7 2.8l1.3.6c1.1.5 1.8 1.6 1.8 2.8V17a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.3c0-1.2.7-2.3 1.8-2.8l1.3-.6c1-.5 1.7-1.6 1.7-2.8V5Z"/><path d="M9 19a3 3 0 1 0 6 0"/></svg>
+                    <!-- Alert dot -->
+                    <span id="notification-dot" class="absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white bg-red-500"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- App Content (Scrollable Area) -->
+        <main id="app-content">
+
+            <!-- 2. Primary View: Home/Feed -->
+            <div id="home" class="page p-4 bg-task-background">
+                <h2 class="text-xl font-extrabold text-gray-900 mb-4">Your Task Hub</h2>
+
+                <!-- Requestor Active Task -->
+                <section id="requestor-active-task" class="mb-6">
+                    <h3 class="font-bold text-task-primary mb-2 flex items-center">Your Active Request
+                        <span class="ml-2 text-xs font-medium bg-task-primary/10 text-task-primary rounded-full px-2 py-0.5">3 Bids</span>
+                    </h3>
+                    <div onclick="MapsTo('task_details', 'Task: Dry Cleaning')" class="bg-white p-4 rounded-xl shadow-lg cursor-pointer transition hover:shadow-xl border border-gray-100">
+                        <p class="text-lg font-semibold text-gray-800">Pick up my dry cleaning</p>
+                        <p class="text-sm text-gray-500 mt-1">Due by 5 PM, 2 miles away.</p>
+                        <div class="mt-3 flex justify-between items-center">
+                            <span class="text-2xl font-bold text-task-secondary">$15-20</span>
+                            <span class="text-xs font-medium text-indigo-500">View Bids →</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tasker Feed ("Tasks Near You") -->
+                <section id="tasker-feed">
+                    <h3 class="font-bold text-gray-800 mb-2">Tasks Near You</h3>
+                    <div class="space-y-3">
+                        <!-- Task Card 1 -->
+                        <div class="bg-white p-4 rounded-xl shadow cursor-pointer border border-gray-100">
+                            <p class="font-semibold text-gray-800">Assemble IKEA bookshelf</p>
+                            <p class="text-sm text-gray-500 mt-1">Requires tools and 2 hours of time.</p>
+                            <div class="mt-3 flex justify-between items-center">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xl font-bold text-task-secondary">$45 Budget</span>
+                                </div>
+                                <button class="text-xs font-semibold text-white bg-task-primary px-3 py-1 rounded-full hover:bg-task-primary/90">View Task</button>
+                            </div>
+                        </div>
+                        <!-- Task Card 2 -->
+                        <div class="bg-white p-4 rounded-xl shadow cursor-pointer border border-gray-100">
+                            <p class="font-semibold text-gray-800">Walk and feed neighborhood cat</p>
+                            <p class="text-sm text-gray-500 mt-1">Daily task, 1 block from my location.</p>
+                            <div class="mt-3 flex justify-between items-center">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xl font-bold text-task-secondary">$10/day</span>
+                                </div>
+                                <button class="text-xs font-semibold text-white bg-task-primary px-3 py-1 rounded-full hover:bg-task-primary/90">View Task</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 2. Primary View: Post Task -->
+            <div id="post_task" class="page p-4 bg-white">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">List a New Task</h2>
+                <form id="post-task-form" onsubmit="postTask(event)">
+                    <div class="mb-4">
+                        <label for="task-title" class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                        <input type="text" id="task-title" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-task-primary focus:border-task-primary transition" placeholder="e.g., Assemble IKEA bookshelf">
+                    </div>
+                    <div class="mb-4">
+                        <label for="task-details" class="block text-sm font-medium text-gray-700 mb-1">Details</label>
+                        <textarea id="task-details" required rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-task-primary focus:border-task-primary transition" placeholder="Describe what needs to be done, location, and timeframe."></textarea>
+                    </div>
+                    <div class="mb-6">
+                        <label for="task-budget" class="block text-sm font-medium text-gray-700 mb-1">Budget ($)</label>
+                        <input type="number" id="task-budget" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-task-primary focus:border-task-primary transition" placeholder="Minimum budget, e.g., 45">
+                    </div>
+
+                    <button type="submit" class="w-full bg-task-primary text-white font-semibold p-3 rounded-xl shadow-lg hover:bg-task-primary/90 transition duration-150">
+                        Post Task Listing
+                    </button>
+                </form>
+            </div>
+
+            <!-- 2. Primary View: My Tasks -->
+            <div id="my_tasks" class="page p-4 bg-task-background">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">My Task Dashboard</h2>
+
+                <!-- Requestor Tasks Section -->
+                <section class="mb-8">
+                    <h3 class="font-bold text-lg text-task-primary mb-3">Tasks I Requested</h3>
+                    <div class="space-y-3">
+                        <!-- Completed/Rated Task -->
+                        <div class="bg-white p-4 rounded-xl shadow">
+                            <p class="font-semibold">Move my old couch (Completed)</p>
+                            <p class="text-sm text-gray-500 mt-1">Tasker: Alex P.</p>
+                            <div class="mt-3 flex items-center justify-between">
+                                <span class="text-sm text-task-secondary font-medium">Payment Released. Rated ★★★★★</span>
+                            </div>
+                        </div>
+                        <!-- Completed/Rated Task (The Dry Cleaning one, after payment demo) -->
+                        <div id="completed-dry-cleaning" class="bg-white p-4 rounded-xl shadow" style="display: none;">
+                            <p class="font-semibold">Pick up my dry cleaning (Completed)</p>
+                            <p class="text-sm text-gray-500 mt-1">Tasker: Jane D.</p>
+                            <div class="mt-3 flex items-center justify-between">
+                                <span class="text-sm text-task-secondary font-medium">Payment Released. Ready to Rate</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tasker Tasks Section -->
+                <section>
+                    <h3 class="font-bold text-lg text-task-secondary mb-3">Tasks I'm Doing</h3>
+                    <div class="space-y-3">
+                        <!-- In Progress Task (Current Chat Context) -->
+                        <div id="tasker-in-progress" class="bg-white p-4 rounded-xl shadow">
+                            <p class="font-semibold">Repair leaky faucet</p>
+                            <p class="text-sm text-gray-500 mt-1">Requestor: Mike K. - Bid: $80</p>
+                            <div class="mt-3 flex items-center justify-between">
+                                <span class="text-sm text-yellow-600 font-medium">In Progress</span>
+                                <button class="bg-task-secondary text-white text-sm font-semibold px-3 py-1 rounded-full hover:bg-task-secondary/90" onclick="MapsTo('payment_confirmation')">Mark as Complete</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 2. Primary View: Wallet -->
+            <div id="wallet" class="page p-4 bg-white">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">My Wallet</h2>
+
+                <div class="bg-task-primary text-white p-6 rounded-xl shadow-lg mb-6">
+                    <p class="text-sm opacity-80">Available Balance</p>
+                    <p id="wallet-balance" class="text-4xl font-extrabold mt-1">$1,234.50</p>
+                </div>
+
+                <!-- Segmented Control -->
+                <div class="flex bg-gray-100 rounded-full p-1 mb-6 text-sm font-medium">
+                    <button id="seg-history" class="wallet-segment flex-1 p-2 rounded-full text-white bg-task-primary transition" onclick="showWalletSegment('history')">History</button>
+                    <button id="seg-withdrawal" class="wallet-segment flex-1 p-2 rounded-full text-gray-700 hover:text-task-primary transition" onclick="showWalletSegment('withdrawal')">Withdrawal</button>
+                    <button id="seg-methods" class="wallet-segment flex-1 p-2 rounded-full text-gray-700 hover:text-task-primary transition" onclick="showWalletSegment('methods')">Methods</button>
+                </div>
+
+                <!-- Wallet Sub-Views -->
+                <div id="wallet-history" class="wallet-view space-y-3">
+                    <h3 class="font-semibold text-gray-800">Recent Transactions</h3>
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span>Task: Couch Move (Payout)</span>
+                        <span class="font-bold text-task-secondary">+$76.00</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span>Withdrawal to Bank</span>
+                        <span class="font-bold text-red-500">-$500.00</span>
+                    </div>
+                </div>
+
+                <div id="wallet-withdrawal" class="wallet-view" style="display: none;">
+                    <p class="text-lg text-gray-700 mb-4">How much would you like to withdraw?</p>
+                    <input type="number" placeholder="Enter amount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-task-primary focus:border-task-primary transition mb-4">
+                    <button class="w-full bg-task-secondary text-white font-semibold p-3 rounded-xl hover:bg-task-secondary/90">Initiate Withdrawal</button>
+                </div>
+
+                <div id="wallet-methods" class="wallet-view space-y-3" style="display: none;">
+                    <h3 class="font-semibold text-gray-800">Linked Accounts</h3>
+                    <div class="p-3 border border-gray-200 rounded-lg flex justify-between items-center">
+                        <span>Checking Account (...1234)</span>
+                        <span class="text-task-secondary text-sm">Default</span>
+                    </div>
+                    <button class="w-full border border-task-primary text-task-primary font-semibold p-3 rounded-xl hover:bg-task-primary/10 transition">+ Link New Method</button>
+                </div>
+            </div>
+
+            <!-- 2. Primary View: Profile -->
+            <div id="profile" class="page p-4 bg-white">
+                <div class="flex flex-col items-center mb-6">
+                    <div class="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center text-4xl text-white font-bold">JD</div>
+                    <h2 class="text-2xl font-bold mt-3">Jane Doe</h2>
+                    <p class="text-gray-500">Member since 2021</p>
+                </div>
+
+                <section class="mb-6 p-4 border border-task-secondary/20 rounded-xl bg-task-secondary/5">
+                    <h3 class="font-semibold text-lg text-task-secondary mb-2">Verification Status</h3>
+                    <div class="flex items-center justify-between text-sm text-gray-700">
+                        <span>Identity Verified:</span>
+                        <span class="font-semibold text-task-secondary">Complete</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm text-gray-700 mt-1">
+                        <span>Background Check:</span>
+                        <span class="font-semibold text-task-secondary">Complete</span>
+                    </div>
+                </section>
+
+                <section class="mb-6 space-y-2">
+                    <h3 class="font-semibold text-lg text-gray-800">Account Settings</h3>
+                    <div class="p-3 bg-gray-50 rounded-lg text-gray-700 cursor-pointer hover:bg-gray-100 transition">Edit Personal Info</div>
+                    <div class="p-3 bg-gray-50 rounded-lg text-gray-700 cursor-pointer hover:bg-gray-100 transition">Security & Password</div>
+                </section>
+
+                <button class="w-full bg-red-500 text-white font-semibold p-3 rounded-xl shadow-lg hover:bg-red-600 transition duration-150" onclick="alert('Simulated: Logged Out')">
+                    Log Out
+                </button>
+            </div>
+
+            <!-- 3. Sub-View: Task Details (Requestor View) -->
+            <div id="task_details" class="page p-4 bg-task-background">
+                <h2 class="text-xl font-bold text-gray-900 mb-3">Pick up my dry cleaning</h2>
+                <p class="text-sm text-gray-500 mb-4">Details: Pick up from 'Clean n Go' on Main St and drop off at my apartment (2 miles away). Must be done before 5 PM today.</p>
+
+                <h3 class="font-bold text-gray-800 mb-3">Received Bids (3)</h3>
+                <div class="space-y-4">
+                    <!-- Bid Card 1 -->
+                    <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-100 flex items-center justify-between" data-tasker="Jane D." data-bid="$18">
+                        <div>
+                            <p class="font-semibold text-lg text-task-secondary">$18.00 Bid</p>
+                            <p class="text-sm text-gray-700 mt-1">
+                                Tasker: Jane D.
+                                <span class="text-xs text-yellow-500 ml-1">★★★★★ (12 tasks)</span>
+                            </p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="text-xs text-task-primary font-semibold px-3 py-1 rounded-full border border-task-primary hover:bg-task-primary/10 transition" onclick="viewTaskerProfile(event, 'Jane D.')">Profile</button>
+                            <button class="bg-task-primary text-white text-sm font-semibold px-3 py-1 rounded-full hover:bg-task-primary/90" onclick="selectTasker('Jane D.', '$18.00')">Accept</button>
+                        </div>
+                    </div>
+                    <!-- Bid Card 2 -->
+                    <div class="bg-white p-4 rounded-xl shadow border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-lg text-task-secondary">$20.00 Bid</p>
+                            <p class="text-sm text-gray-700 mt-1">
+                                Tasker: Mark V.
+                                <span class="text-xs text-yellow-500 ml-1">★★★★☆ (5 tasks)</span>
+                            </p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="text-xs text-task-primary font-semibold px-3 py-1 rounded-full border border-task-primary hover:bg-task-primary/10 transition" onclick="viewTaskerProfile(event, 'Mark V.')">Profile</button>
+                            <button class="bg-task-primary text-white text-sm font-semibold px-3 py-1 rounded-full hover:bg-task-primary/90" onclick="selectTasker('Mark V.', '$20.00')">Accept</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Sub-View: Tasker Profile -->
+            <div id="tasker_profile" class="page p-4 bg-white">
+                <div class="flex items-center mb-6">
+                    <div class="w-16 h-16 bg-task-primary/20 rounded-full flex items-center justify-center text-2xl text-task-primary font-bold">JD</div>
+                    <div class="ml-4">
+                        <h2 id="tasker-name-display" class="text-xl font-bold">Jane D.</h2>
+                        <p class="text-yellow-500 text-lg">★★★★★ <span class="text-sm text-gray-500">(98 Reviews)</span></p>
+                    </div>
+                </div>
+
+                <section class="grid grid-cols-3 gap-3 text-center mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <div class="p-2 border-r">
+                        <p class="text-2xl font-bold text-gray-800">95%</p>
+                        <p class="text-xs text-gray-500">On-Time Rate</p>
+                    </div>
+                    <div class="p-2 border-r">
+                        <p class="text-2xl font-bold text-gray-800">12</p>
+                        <p class="text-xs text-gray-500">Tasks Completed</p>
+                    </div>
+                    <div class="p-2">
+                        <p class="text-2xl font-bold text-gray-800">3 yrs</p>
+                        <p class="text-xs text-gray-500">On Platform</p>
+                    </div>
+                </section>
+
+                <h3 class="font-bold text-lg text-gray-800 mb-3">Verification & Trust</h3>
+                <div class="space-y-2 mb-6">
+                    <div class="flex items-center text-sm text-task-secondary font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                        <span class="ml-2">Identity Verified</span>
+                    </div>
+                    <div class="flex items-center text-sm text-task-secondary font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <span class="ml-2">Background Check Passed</span>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-lg text-gray-800 mb-3">Recent Reviews (3)</h3>
+                <div class="space-y-3">
+                    <div class="p-3 bg-gray-50 rounded-lg text-sm border-l-4 border-task-secondary">"Fast and excellent communication." - S.K.</div>
+                </div>
+
+                <button class="w-full mt-6 bg-task-primary text-white font-semibold p-3 rounded-xl hover:bg-task-primary/90" onclick="MapsTo('in_app_chat')">
+                    Send Message (Initial Inquiry)
+                </button>
+            </div>
+
+            <!-- 3. Sub-View: In-App Chat -->
+            <div id="in_app_chat" class="page flex flex-col h-full bg-task-background">
+                <!-- Contextual Header (Dynamically updated in JS) -->
+                <div id="chat-context-header" class="p-3 bg-white border-b sticky top-0">
+                    <p class="text-xs text-gray-500">Active Task:</p>
+                    <p id="chat-task-title" class="font-semibold text-gray-800">Dry Cleaning Pickup</p>
+                    <p id="chat-tasker-info" class="text-xs text-task-secondary">Tasker: Jane D. (Accepted Bid: $18.00)</p>
+                </div>
+
+                <!-- Message Bubbles -->
+                <div class="chat-messages flex-grow overflow-y-auto p-4" id="chat-messages">
+                    <div class="message-bubble other-message">Hi! I saw your request for dry cleaning pickup. I'm available now and can do it for the $18 bid.</div>
+                    <div class="message-bubble user-message">Sounds good, I've accepted your bid! The cleaner is 'Clean n Go' - ready when you are.</div>
+
+                    <!-- System Message: Escrow Alert -->
+                    <div class="text-center text-xs text-gray-500 my-3">
+                        <span class="inline-block bg-yellow-100 text-yellow-800 p-1 rounded-full px-3">
+                            Escrow set: $18.00 secured. Payment releases upon your confirmation.
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Chat Actions and Input -->
+                <div class="p-3 bg-white border-t space-y-2 sticky bottom-0">
+                    <!-- Quick Actions / Payment CTA -->
+                    <div class="flex justify-between items-center text-sm font-medium">
+                        <div class="flex space-x-3">
+                            <button class="text-gray-500 hover:text-task-primary" title="Send Location">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.73 20.73a.84.84 0 0 1-1.2 0L17 18h-2l-1.3-1.3a.84.84 0 0 1 0-1.2L16 13"/></svg>
+                            </button>
+                            <button class="text-gray-500 hover:text-task-primary" title="Send Photo">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            </button>
+                        </div>
+                        <button class="bg-task-secondary text-white px-3 py-1 rounded-full text-xs font-bold shadow-md hover:bg-task-secondary/90" onclick="MapsTo('payment_confirmation')">
+                            Payment Shortcut
+                        </button>
+                    </div>
+
+                    <!-- Message Input -->
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="chat-input" placeholder="Type a message..." class="flex-grow p-2 border border-gray-300 rounded-full focus:ring-task-primary focus:border-task-primary transition">
+                        <button class="bg-task-primary text-white p-2 rounded-full hover:bg-task-primary/90 transition" onclick="sendMessage()">
+                            <!-- Icon: Send -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Sub-View: Payment Confirmation -->
+            <div id="payment_confirmation" class="page p-4 bg-white">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Confirm Task Completion</h2>
+
+                <div class="text-center p-6 bg-task-secondary/10 rounded-xl mb-6 border border-task-secondary/20">
+                    <p class="text-lg font-semibold text-task-secondary">Is the task complete?</p>
+                    <p class="text-sm text-gray-600">You are about to release payment to Jane D.</p>
+                </div>
+
+                <!-- Payment Breakdown -->
+                <h3 class="font-bold text-lg text-gray-800 mb-3">Payment Breakdown</h3>
+                <div class="space-y-2 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <div class="flex justify-between text-gray-700">
+                        <span>Agreed Bid Amount:</span>
+                        <span id="p-bid" class="font-semibold">$18.00</span>
+                    </div>
+                    <div class="flex justify-between text-gray-700">
+                        <span>TaskLink Service Fee (5%):</span>
+                        <span id="p-fee" class="font-semibold text-red-500">-$0.90</span>
+                    </div>
+                    <div class="border-t border-gray-200 pt-2 flex justify-between font-bold text-xl">
+                        <span>Final Payout to Tasker:</span>
+                        <span id="p-payout" class="text-task-secondary">$17.10</span>
+                    </div>
+                </div>
+
+                <p class="text-sm text-center text-red-500 mt-6 mb-4">
+                    Your card will be charged the $18.00 bid amount.
+                </p>
+
+                <button class="w-full bg-task-secondary text-white font-semibold p-3 rounded-xl shadow-lg hover:bg-task-secondary/90 transition duration-150 mb-3" onclick="releasePaymentDemo()">
+                    Confirm & Release Payment
+                </button>
+                <button class="w-full text-red-500 font-semibold p-3 rounded-xl border border-red-500 hover:bg-red-50 transition duration-150" onclick="alert('Simulated: A dispute has been filed. TaskLink support will investigate.')">
+                    Dispute/Report Issue
+                </button>
+            </div>
+
+        </main>
+
+        <!-- Bottom Navigation (Fixed Five-Item Bar) -->
+        <nav id="bottom-nav" class="bg-white border-t border-gray-100 p-2 flex justify-around shadow-2xl">
+            <!-- Item 1: Home/Feed -->
+            <button class="nav-item flex flex-col items-center p-1 text-task-primary" data-page="home" onclick="MapsTo('home', 'Home')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span class="text-xs mt-1">Home</span>
+            </button>
+            <!-- Item 2: Post Task -->
+            <button class="nav-item flex flex-col items-center p-1 text-gray-500 hover:text-task-primary" data-page="post_task" onclick="MapsTo('post_task', 'Post Task')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                <span class="text-xs mt-1">Post</span>
+            </button>
+            <!-- Item 3: My Tasks -->
+            <button class="nav-item flex flex-col items-center p-1 text-gray-500 hover:text-task-primary" data-page="my_tasks" onclick="MapsTo('my_tasks', 'My Tasks')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 15h4"/><path d="M12 11h4"/><path d="M8 11h.01"/><path d="M8 15h.01"/></svg>
+                <span class="text-xs mt-1">My Tasks</span>
+            </button>
+            <!-- Item 4: Wallet -->
+            <button class="nav-item flex flex-col items-center p-1 text-gray-500 hover:text-task-primary" data-page="wallet" onclick="MapsTo('wallet', 'Wallet')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5"/><path d="M18 17h.01"/><rect x="19" y="15" width="2" height="4" rx="1"/></svg>
+                <span class="text-xs mt-1">Wallet</span>
+            </button>
+            <!-- Item 5: Profile -->
+            <button class="nav-item flex flex-col items-center p-1 text-gray-500 hover:text-task-primary" data-page="profile" onclick="MapsTo('profile', 'Profile')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span class="text-xs mt-1">Profile</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Global State Simulation
+        let currentPage = 'home';
+        let history = ['home'];
+        let currentTask = {
+            title: 'Pick up my dry cleaning',
+            tasker: 'Jane D.',
+            bid: '$18.00'
+        };
+
+        // 4. Key Simulated Logic: MapsTo(pageId, pageTitle)
+        function MapsTo(pageId, pageTitle = null) {
+            const pages = document.querySelectorAll('.page');
+            const navItems = document.querySelectorAll('.nav-item');
+            const headerTitle = document.getElementById('page-title');
+            const backButton = document.getElementById('back-button');
+            const appContent = document.getElementById('app-content');
+
+            // 1. Update History
+            if (pageId !== currentPage) {
+                if (history[history.length - 1] !== pageId) {
+                    history.push(pageId);
+                }
+            }
+            currentPage = pageId;
+
+            // 2. Hide all pages and show the target page
+            pages.forEach(page => {
+                page.style.display = 'none';
+            });
+            document.getElementById(pageId).style.display = 'block';
+
+            // 3. Update Header Title
+            if (pageTitle) {
+                headerTitle.textContent = pageTitle;
+            } else {
+                // Defaulting to the page name if title isn't provided (e.g., from Nav)
+                headerTitle.textContent = pageId.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            }
+
+            // 4. Update Back Button Visibility
+            if (['home', 'post_task', 'my_tasks', 'wallet', 'profile'].includes(pageId)) {
+                backButton.classList.add('hidden');
+            } else {
+                backButton.classList.remove('hidden');
+            }
+
+            // 5. Update Bottom Navigation Active State
+            const isPrimaryView = ['home', 'post_task', 'my_tasks', 'wallet', 'profile'].includes(pageId);
+            navItems.forEach(item => {
+                const itemPage = item.getAttribute('data-page');
+                const isItemActive = isPrimaryView && itemPage === pageId;
+
+                item.classList.remove('text-task-primary', 'font-bold');
+                item.classList.add('text-gray-500');
+
+                if (isItemActive) {
+                    item.classList.add('text-task-primary', 'font-bold');
+                    item.classList.remove('text-gray-500');
+                }
+            });
+
+            // 6. Scroll to top of content
+            appContent.scrollTop = 0;
+
+            // 7. Special Page Logic
+            if (pageId === 'in_app_chat') {
+                // Update chat contextual header
+                document.getElementById('chat-task-title').textContent = currentTask.title;
+                document.getElementById('chat-tasker-info').textContent = `Tasker: ${currentTask.tasker} (Accepted Bid: ${currentTask.bid})`;
+                // Scroll to latest message
+                const chatMessagesContainer = document.getElementById('chat-messages');
+                chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+            }
+        }
+
+        function goBack() {
+            history.pop(); // Remove current page
+            const prevPage = history[history.length - 1] || 'home';
+            history.pop(); // MapsTo will add it back, so remove it first to prevent duplicates
+            MapsTo(prevPage, null);
+        }
+
+        // 4. Key Simulated Logic: postTask(event)
+        function postTask(event) {
+            event.preventDefault();
+            const title = document.getElementById('task-title').value;
+            const budget = document.getElementById('task-budget').value;
+
+            alert(`Task Submitted!\nTitle: "${title}"\nBudget: $${budget}\n\nReturning to Home view.`);
+            MapsTo('home', 'Home');
+            document.getElementById('post-task-form').reset();
+        }
+
+        // 4. Key Simulated Logic: selectTasker(...)
+        function selectTasker(taskerName, bidAmount) {
+            // Update global state
+            currentTask.tasker = taskerName;
+            currentTask.bid = bidAmount;
+
+            alert(`Bid of ${bidAmount} by ${taskerName} accepted! Escrow has been initiated.`);
+
+            // Navigate to Chat view
+            MapsTo('in_app_chat', 'Chat');
+        }
+
+        // 4. Key Simulated Logic: releasePaymentDemo()
+        function releasePaymentDemo() {
+            const bid = parseFloat(currentTask.bid.replace('$', ''));
+            const serviceFeeRate = 0.05;
+            const serviceFee = bid * serviceFeeRate;
+            const payout = bid - serviceFee;
+
+            // Display confirmation alert
+            alert(`Payment Released!\n\nBid: $${bid.toFixed(2)}\nFee (5%): $${serviceFee.toFixed(2)}\nTasker Payout: $${payout.toFixed(2)}\n\nThank you for using TaskLink!`);
+
+            // 1. Simulate task completion on My Tasks
+            document.getElementById('requestor-active-task').style.display = 'none';
+            document.getElementById('completed-dry-cleaning').style.display = 'block';
+
+            // 2. Hide Tasker in progress item
+            document.getElementById('tasker-in-progress').style.display = 'none';
+
+            // 3. Update Wallet Balance (Simulated Payout to Tasker, if Tasker was logged in)
+            // Since this app simulates the Requestor flow, we'll just navigate.
+
+            // 4. Navigate to My Tasks
+            MapsTo('my_tasks', 'My Tasks');
+        }
+
+        // 4. Key Simulated Logic: showWalletSegment(id)
+        function showWalletSegment(id) {
+            document.querySelectorAll('.wallet-view').forEach(view => {
+                view.style.display = 'none';
+            });
+            document.getElementById(`wallet-${id}`).style.display = 'block';
+
+            document.querySelectorAll('.wallet-segment').forEach(button => {
+                button.classList.remove('bg-task-primary', 'text-white');
+                button.classList.add('text-gray-700', 'hover:text-task-primary');
+            });
+
+            const activeButton = document.getElementById(`seg-${id}`);
+            activeButton.classList.add('bg-task-primary', 'text-white');
+            activeButton.classList.remove('text-gray-700', 'hover:text-task-primary');
+        }
+
+        // 4. Key Simulated Logic: sendMessage()
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const messageText = input.value.trim();
+            if (messageText) {
+                const chatContainer = document.getElementById('chat-messages');
+                const newBubble = document.createElement('div');
+                newBubble.className = 'message-bubble user-message';
+                newBubble.textContent = messageText;
+                chatContainer.appendChild(newBubble);
+
+                input.value = ''; // Clear input
+                chatContainer.scrollTop = chatContainer.scrollHeight; // Auto-scroll
+            }
+        }
+
+        // 4. Key Simulated Logic: viewTaskerProfile(event, taskerName)
+        function viewTaskerProfile(event, taskerName) {
+            // Prevent the parent 'Accept' button logic from firing
+            event.stopPropagation();
+            event.preventDefault();
+
+            // Update profile name dynamically
+            document.getElementById('tasker-name-display').textContent = taskerName;
+
+            // Route to profile
+            MapsTo('tasker_profile', 'Tasker Profile');
+        }
+
+
+        // Initialization: Start the app on the home page
+        window.onload = () => {
+            MapsTo('home', 'Home');
+        };
+    </script>
+</body>
+</html>
