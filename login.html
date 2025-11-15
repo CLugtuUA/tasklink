@@ -33,7 +33,7 @@
             background-color: #e5e7eb; /* Light gray background */
             font-family: 'Inter', sans-serif;
         }
-        /* Mobile-like container (removed fixed height to allow login content to fit) */
+        /* Mobile-like container */
         #app-container {
             width: 100%;
             max-width: 400px; /* Max mobile size */
@@ -41,6 +41,29 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
             border-radius: 24px;
             background-color: #fff;
+        }
+
+        /* Logo specific styles */
+        .tasklink-logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        .tasklink-logo-icon-img {
+            /* Adjust size for the rendered image */
+            width: 150px; 
+            height: 150px;
+            margin-bottom: 0.5rem;
+        }
+
+        .tasklink-logo-text {
+            font-size: 2.5rem; /* Larger text for the brand name */
+            font-weight: 800; /* Extra bold */
+            color: #1a202c; /* Dark gray for strong contrast */
+            letter-spacing: -0.05em; /* Slightly tighter letter spacing */
         }
     </style>
 </head>
@@ -50,18 +73,13 @@
 
         <div id="login" class="flex flex-col items-center p-4">
 
-            <div class="mb-8 text-center">
-                <svg class="w-12 h-12 mx-auto text-task-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10 13l2 2 4-4"/>
-                    <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/>
-                    <path d="M8 12h8"/> 
-                </svg>
-
-                <h1 class="mt-3 text-3xl font-extrabold text-gray-900">
-                    TaskLink
-                </h1>
-                <p class="text-sm text-gray-500">Log in to your account</p>
+            <div class="tasklink-logo-container">
+                <img src="images/tasklink.png" alt="TaskLink App Logo" class="tasklink-logo-icon-img"/>
+                
+                <h1 class="tasklink-logo-text">TaskLink</h1>
             </div>
+
+            <p class="text-sm text-gray-500 mb-8">Log in to your account</p>
 
             <form action="index.html" method="GET" class="w-full space-y-5">
                 
